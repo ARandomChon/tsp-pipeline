@@ -49,6 +49,10 @@ G, pos = make_network(adj, remove_deg_zero_nodes = True)
 #create distance matrix and persistance diagram
 D, diagram = PH_network(adj)
 
+#persistance metrics -- 
+stats = point_summaries(diagram, adj)
+print(stats) #divide by 0 error
+
 #----------------------------Plot the networks / graphs-----------------------#
 TextSize = 13
 plt.figure(2)
