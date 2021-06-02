@@ -3,21 +3,13 @@
 Created on Tue Jun  1 08:05:45 2021
 
 @author: saipr
-
-def viewLag(x, maxLag = 10):
-    lagDict = {}
-    lags = np.array([i for i in range(1, maxLag)]) #all the lags we're testing for
-    for l in lags:
-        y = 
 """
-import teaspoon as tsp
 from teaspoon.parameter_selection.MI_delay import MI_for_delay
 from teaspoon.parameter_selection.FNN_n import FNN_n
 from teaspoon.parameter_selection.MsPE import MsPE_n,  MsPE_tau
 from teaspoon.SP.network import ordinal_partition_graph
-from teaspoon.TDA.PHN import PH_network
+from teaspoon.TDA.PHN import PH_network, point_summaries
 from teaspoon.SP.network_tools import make_network
-from teaspoon.parameter_selection.MsPE import MsPE_tau
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -32,18 +24,19 @@ x = np.array(timeSeries[varName])
 
 #----------------------------Takens/Permutation-------------------------------#
 #import and find its tau via min. mutual information
-tau = MI_for_delay(x, plotting = False) #lag = 4 for this one
+tau = MI_for_delay(x, plotting = False) 
 #find embedding dimension by false nearest neighbors
 perc_FNN, n= FNN_n(x, tau) #n is embedding dimension
+print(tau, n) 
 
 #tau and D are chosen via permutation entropy
-tau2 = int(MsPE_tau(x, plotting = False))
-n2 = MsPE_n(x, tau2)
-#print(tau2, n2) #picks a tau of 2, n of 4
+tau = int(MsPE_tau(x, plotting = False))
+n = MsPE_n(x, tau)
 
 #----------------------------Ordinal Partition Network------------------------#
 #now to build an adjacency network
 adj = ordinal_partition_graph(x, n, tau) #using takens'
+#print(adj)
 #get networkx representations for plotting
 G, pos = make_network(adj, remove_deg_zero_nodes = True)
 #create distance matrix and persistance diagram
@@ -51,7 +44,7 @@ D, diagram = PH_network(adj)
 
 #persistance metrics -- 
 stats = point_summaries(diagram, adj)
-print(stats) #divide by 0 error
+print(stats)
 
 #----------------------------Plot the networks / graphs-----------------------#
 TextSize = 13
