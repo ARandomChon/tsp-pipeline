@@ -12,6 +12,9 @@ from teaspoon.parameter_selection.MsPE import MsPE_n,  MsPE_tau
 from teaspoon.SP.network import ordinal_partition_graph
 from teaspoon.TDA.PHN import PH_network, point_summaries
 from teaspoon.SP.network_tools import make_network
+from teaspoon.SP.tsa_tools import takens
+from ripser import ripser
+from persim import plot_diagrams
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -68,15 +71,17 @@ are able to do so through the t_tau, t_d, p_tau, and p_d arguments
 TODO: add error catching for invalid tau or d values
 """
 def tsp_pipeline(ts_data, col_name=1, takens_f=True, permut_f=True,
-        t_tau=None, t_d=None, p_tau=None,p_d=None):
+                 t_tau=None, t_d=None, p_tau=None,p_d=None):
     # step 1, read in the file
     ts_df = pd.read_csv(ts_data, usecols=[col_name], index_col=False)
     # dataframe to array conversion
 #   ts_df = np.array(ts_df)
     ts_df = ts_df.to_numpy()
     ts_df = ts_df.flatten()
+    TextSize = 13
     # time for takens/permut
     # check/initialize tau and d
+    # and then compute graph for permutation/construct pointcloud for takens
     if(takens_f == True):
         # set tau if a specific one was not set
         if(t_tau == None):
@@ -84,6 +89,40 @@ def tsp_pipeline(ts_data, col_name=1, takens_f=True, permut_f=True,
         # set d if a specific one was not set
         if(t_d == None):
             perc_FNN, t_d = FNN_n(ts_df, t_tau)
+
+        print("Takens': tau = ",t_tau,", d = ",t_d, sep='')
+        # this code was from using a network from takens instead of
+        # just a pointcloud, which has now been changed
+        # t_adj = ordinal_partition_graph(ts_df, t_d, t_tau)
+       
+        # this returns the point cloud as numpy array
+        t_cloud = takens(ts_df, t_d, t_tau)
+
+        # computing persistence diagrams using ripser
+        t_diagram = ripser(t_cloud, maxdim=2)
+        
+        plt.figure(0)
+        plt.figure(figsize=(8,8))
+        gs = gridspec.GridSpec(4, 2)
+
+        # plot the point cloud if it is 3d or 2d
+        # 2d case
+        
+        if(t_d == 2):
+            ax = plt.subplot(2,2,1)
+            plt.title('PointCloud', size = TextSize)
+            plt.plot(t_cloud[:,0], t_cloud[:,1])
+        
+        # 3d case
+        if(t_d == 3):
+            ax = plt.subplot(2,2,1, projection = '3d')
+            plt.title('PointCloud', size = TextSize)
+            ax.scatter(t_cloud[:,0], t_cloud[:,1], t_cloud[:,2], marker='.')
+        
+        ax = plt.subplot(2,2,2)
+        plot_diagrams(t_diagram["dgms"], show=False)
+        
+
     if(permut_f == True):
         # set tau if a specific one was not set
         if(p_tau == None):
@@ -91,59 +130,49 @@ def tsp_pipeline(ts_data, col_name=1, takens_f=True, permut_f=True,
         # set d if a specific one was not set
         if(p_d == None):
             p_d = MsPE_n(ts_df, p_tau)
-    
-    print("Takens': tau = ",t_tau,", d = ",t_d, sep='')
-    print("Permutation: tau = ",p_tau,", d = ",p_d, sep='')
 
-    t_adj = ordinal_partition_graph(ts_df, t_d, t_tau)
-    t_G, t_pos = make_network(t_adj, remove_deg_zero_nodes=True)
-    t_D, t_diagram = PH_network(t_adj)
-    t_stats = point_summaries(t_diagram, t_adj)
-    print("Stats for Ordinal Partition Network from Takens' Embedding:")
-    print(t_stats)
+        print("Permutation: tau = ",p_tau,", d = ",p_d, sep='')
+        p_adj = ordinal_partition_graph(ts_df, p_d, p_tau)
+        p_G, p_pos = make_network(p_adj, remove_deg_zero_nodes=True)
+        p_D, p_diagram = PH_network(p_adj)
+        p_stats = point_summaries(p_diagram, p_adj)
+        print("Stats for Ordinal Partition Network from Permutation Sequence:")
+        print(p_stats)
 
-    p_adj = ordinal_partition_graph(ts_df, p_d, p_tau)
-    p_G, p_pos = make_network(p_adj, remove_deg_zero_nodes=True)
-    p_D, p_diagram = PH_network(p_adj)
-    p_stats = point_summaries(p_diagram, p_adj)
-    print("Stats for Ordinal Partition Network from Permutation Sequence:")
-    print(p_stats)
+        
+        plt.figure(1)
+        plt.figure(figsize=(8,8))
+        gs = gridspec.GridSpec(4, 2)
 
-    TextSize = 13
-    
-    # making plots out of data above
-    plt.figure(1)
-    plt.figure(figsize=(8,8))
-    gs = gridspec.GridSpec(4, 2)
+        ax = plt.subplot(gs[0:2, 0:2]) #plot time series
+        plt.title('Time Series', size = TextSize)
+        plt.plot(ts_df, 'k')
+        plt.xticks(size = TextSize)
+        plt.yticks(size = TextSize)
+        plt.xlabel('$t$', size = TextSize)
+        plt.ylabel('$x(t)$', size = TextSize)
+        plt.xlim(0,len(ts_df))
 
-    ax = plt.subplot(gs[0:2, 0:2]) #plot time series
-    plt.title('Time Series', size = TextSize)
-    plt.plot(ts_df, 'k')
-    plt.xticks(size = TextSize)
-    plt.yticks(size = TextSize)
-    plt.xlabel('$t$', size = TextSize)
-    plt.ylabel('$x(t)$', size = TextSize)
-    plt.xlim(0,len(ts_df))
-
-    ax = plt.subplot(gs[2:4, 0])
-    plt.title('Network', size = TextSize)
-    nx.draw(p_G, p_pos, with_labels=False,
+        ax = plt.subplot(gs[2:4, 0])
+        plt.title('Network', size = TextSize)
+        nx.draw(p_G, p_pos, with_labels=False,
             font_weight='bold', node_color='blue',
         width=1, font_size = 10, node_size = 30)
 
-    ax = plt.subplot(gs[2:4, 1])
-    plt.title('Persistence Diagram', size = TextSize)
-    MS = 3
-    top = max(p_diagram[1].T[1])
-    plt.plot([0,top*1.25],[0,top*1.25],'k--')
-    plt.yticks( size = TextSize)
-    plt.xticks(size = TextSize)
-    plt.xlabel('Birth', size = TextSize)
-    plt.ylabel('Death', size = TextSize)
-    plt.plot(p_diagram[1].T[0],p_diagram[1].T[1] ,'go', markersize = MS+2)
-    plt.xlim(0,top*1.25)
-    plt.ylim(0,top*1.25)
-
+        ax = plt.subplot(gs[2:4, 1])
+        plt.title('Persistence Diagram', size = TextSize)
+        MS = 3
+        top = max(p_diagram[1].T[1])
+        plt.plot([0,top*1.25],[0,top*1.25],'k--')
+        plt.yticks( size = TextSize)
+        plt.xticks(size = TextSize)
+        plt.xlabel('Birth', size = TextSize)
+        plt.ylabel('Death', size = TextSize)
+        plt.plot(p_diagram[1].T[0],p_diagram[1].T[1] ,'go', markersize = MS+2)
+        plt.xlim(0,top*1.25)
+        plt.ylim(0,top*1.25)
+    
+    # making plots out of data above
     plt.subplots_adjust(hspace= 0.8)
     plt.subplots_adjust(wspace= 0.35)
     plt.show()
