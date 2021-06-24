@@ -119,8 +119,9 @@ def tsp_pipeline(ts_data, col_name=1, takens_f=True, permut_f=True,
             plt.title('PointCloud', size = TextSize)
             ax.scatter(t_cloud[:,0], t_cloud[:,1], t_cloud[:,2], marker='.')
         
-        ax = plt.subplot(2,2,2)
+        ax = plt.subplot(2,2,3)
         plot_diagrams(t_diagram["dgms"], show=False)
+        plt.title("Persistence Diagram", size = TextSize)
         
 
     if(permut_f == True):
