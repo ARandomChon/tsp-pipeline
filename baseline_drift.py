@@ -37,5 +37,5 @@ def drift_estimate_swt(x, wname="db8", N=9):
         wave_coeffs[i] = tuple(j)
 
     # then use params for pywt.iswt
-    baseline_estimate = pywt.iswt(wave_coeffs, 'db8')
+    baseline_estimate = pywt.iswt(wave_coeffs, wname)
     return baseline_estimate
